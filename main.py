@@ -1,10 +1,15 @@
 class TiendaOnline:
     # Sistema básico de gestión de inventario y ventas
     
-    def __init__(self, inventario_inicial={}):
-        self.inventario = inventario_inicial
+    def __init__(self, inventario_inicial=None):
+        """Inicializa la tienda con un inventario propio y ventas en cero."""
+        if inventario_inicial is None:
+            self.inventario = {}
+        else:
+            self.inventario = inventario_inicial
         self.ventas_totales = 0.0
 
+        
     def agregar_producto(self, id_producto, nombre, precio, cantidad):
         """Agrega o actualiza un producto en el inventario."""
         if id_producto in self.inventario:
