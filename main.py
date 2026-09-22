@@ -25,6 +25,9 @@ class TiendaOnline:
 
             producto = self.inventario[id_prod]
             
+            if cant_comprada > producto['cantidad']:
+                continue
+
             # Actualizamos inventario y sumamos al total
             producto['cantidad'] -= cant_comprada
             total_pedido += producto['precio'] * cant_comprada
