@@ -4,6 +4,7 @@ venv/
 
 # Cache de Python
 __pycache__/
+.pytest_cache/
 *.py[cod]
 
 # Configuracion local de VS Code
