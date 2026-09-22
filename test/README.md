@@ -1,129 +1,186 @@
-# Bug 003 y Bug 004 — Documentación de Tests
+# Bug 001–006 — Documentación de Tests
 
 ---
 
-## Bug 003 — Producto inexistente en carrito
+## Bug 1 — Typo en atributo de ventas (`ventas_totaIes` → `ventas_totales`)
 
-### 1. Problema
+### Problema
 
-En el método `procesar_pedido()` de la clase `TiendaOnline` (archivo `main.py`), cuando el carrito contiene un producto cuyo `id_producto` no existe en el inventario, el código accede directamente a `self.inventario[id_prod]` sin verificar primero si esa clave existe.
+En el método `procesar_pedido()`, al registrar la venta, se usaba un atributo con typo:
 
-### 2. Localización
+```python
+self.ventas_totaIes += total_pedido
+```
 
-`main.py`, dentro del bucle `for item in carrito:` del método `procesar_pedido()`.
+El atributo correcto es `ventas_totales` (declarado en `__init__`), por lo que el código lanzaba `AttributeError`.
 
-### 3. Excepción
+### Solución
 
-Se produce un `KeyError` no controlado, lo que interrumpe el procesamiento completo del pedido.
+Se corrigió el nombre:
 
-### 4. Causa
+```python
+self.ventas_totales += total_pedido
+```
 
-Falta una guarda condicional que verifique la existencia de `id_prod` en `self.inventario` antes de intentar acceder al diccionario.
+### Test
 
-### 5. Solución
+`test/test_bug_001.py` — Verifica que `procesar_pedido()` no lance `AttributeError` y que `ventas_totales` se actualice.
 
-Se agregó una validación de existencia justo antes del acceso a `self.inventario[id_prod]`:
+### Resultado
+
+```
+1 PASSED / 0 FAILED
+```
+
+---
+
+## Bug 2 — Descuento invertido (`1.20` → `0.80`)
+
+### Problema
+
+El cupón `SENA2026` multiplicaba el total por `1.20` (aumenta 20%) en lugar de `0.80` (descuenta 20%).
+
+### Solución
+
+```python
+if cupon_descuento == "SENA2026":
+    total_pedido = total_pedido * 0.80
+```
+
+### Test
+
+`test/test_error2.py` — Verifica que el total con cupón sea 80% del original.
+
+### Resultado
+
+```
+1 PASSED / 0 FAILED
+```
+
+---
+
+## Bug 3 — Producto inexistente en carrito (KeyError)
+
+### Problema
+
+En `procesar_pedido()`, se accedía a `self.inventario[id_prod]` sin verificar existencia, produciendo `KeyError`.
+
+### Solución
 
 ```python
 if id_prod not in self.inventario:
     continue
 ```
 
-Si el producto no existe en el inventario, ese elemento del carrito se ignora y se continúa procesando el resto del pedido sin interrupciones.
+### Tests (`test/test_bug_003.py`)
+
+| Test | Descripción |
+|------|-------------|
+| `test_bug_003_product_exists_processed_correctly` | Producto existente → procesa correctamente |
+| `test_bug_003_product_not_exists_no_KeyError` | Inexistente → no lanza KeyError |
+| `test_bug_003_product_not_exists_no_inventory_change` | Inexistente → no modifica inventario |
+| `test_bug_003_valid_then_invalid_in_carrito` | Válido + inexistente → válido procesa, inexistente ignorado |
+
+### Resultado
+
+```
+4 PASSED / 0 FAILED
+```
 
 ---
 
-## Bug 004 — Stock insuficiente
+## Bug 4 — Stock insuficiente (cantidades negativas)
 
-### 1. Problema
+### Problema
 
-El sistema permite procesar una compra aunque la cantidad solicitada sea mayor que el stock disponible. En el método `procesar_pedido()` de `main.py` se descuenta del inventario sin verificar stock suficiente, lo que puede dejar cantidades negativas.
+Se descontaba stock sin verificar disponibilidad, permitiendo cantidades negativas.
 
-### 2. Localización
-
-`main.py`, dentro del bucle `for item in carrito:` del método `procesar_pedido()`.
-
-### 3. Causa raíz
-
-No existe una validación previa que compare `cant_comprada` contra `producto['cantidad']` (el stock disponible).
-
-### 4. Comportamiento original
-
-- Cualquier cantidad solicitada se descuenta del stock, incluso si supera lo disponible.
-- El stock podía quedar en valores negativos.
-- El total se calculaba sobre la cantidad solicitada sin importar el stock real.
-
-### 5. Solución aplicada
-
-Se agregó una validación antes del descuento:
+### Solución
 
 ```python
 if cant_comprada > producto['cantidad']:
     continue
 ```
 
-Si la cantidad solicitada supera el stock disponible, ese item del carrito se ignora y se continúa procesando el resto del pedido.
-
----
-
-## Comportamiento esperado después de ambas soluciones
-
-| Bug | Escenario | Resultado |
-|-----|-----------|-----------|
-| **Bug 003** | `id_prod` no existe en inventario | Item ignorado, continúa con el resto |
-| **Bug 004** | `cant_comprada <= stock` | Se descuenta normalmente y se suma al total |
-| **Bug 004** | `cant_comprada == stock` | Stock queda en 0 |
-| **Bug 004** | `cant_comprada > stock` | Item ignorado, stock sin cambios, no se suma al total |
-| **Bug 004** | Cualquier escenario | Stock nunca es negativo |
-
----
-
-## Pruebas realizadas
-
-### Bug 003 (`test/test_bug_003.py`)
+### Tests (`test/test_bug_004.py`)
 
 | Test | Descripción |
 |------|-------------|
-| `test_bug_003_product_exists_processed_correctly` | Producto existente → procesa correctamente, cantidad y total correctos |
-| `test_bug_003_product_not_exists_no_KeyError` | Producto inexistente → no lanza KeyError, total = 0 |
-| `test_bug_003_product_not_exists_no_inventory_change` | Producto inexistente → no modifica el inventario |
-| `test_bug_003_valid_then_invalid_in_carrito` | Válido + inexistente → válido se procesa, inexistente ignorado |
+| `test_bug_004_compra_dentro_del_stock` | Compra ≤ stock → descuenta correctamente |
+| `test_bug_004_compra_exactamente_el_stock` | Compra == stock → stock = 0 |
+| `test_bug_004_compra_superior_al_stock` | Compra > stock → item ignorado |
+| `test_bug_004_nunca_stock_negativo` | Múltiples excesos → stock nunca negativo |
 
-### Bug 004 (`test/test_bug_004.py`)
+### Resultado
 
-| Test | Descripción |
-|------|-------------|
-| `test_bug_004_compra_dentro_del_stock` | Compra menor al stock → descuento correcto y total calculado |
-| `test_bug_004_compra_exactamente_el_stock` | Compra igual al stock → stock termina en 0 |
-| `test_bug_004_compra_superior_al_stock` | Compra mayor al stock → item ignorado, stock intacto |
-| `test_bug_004_nunca_stock_negativo` | Múltiples compras excesivas → stock nunca negativo |
+```
+4 PASSED / 0 FAILED
+```
 
 ---
 
-## Comandos de ejecución
+## Bug 5 — Iteración insegura en `limpiar_agotados()`
+
+### Problema
+
+`limpiar_agotados()` iteraba sobre `self.inventario.keys()` mientras eliminaba claves, causando `RuntimeError`.
+
+### Solución
+
+```python
+for id_producto in list(self.inventario.keys()):
+```
+
+### Test
+
+`test/test_bug5.py` — Verifica que productos con stock 0 se eliminen y los demás se conserven sin `RuntimeError`.
+
+### Resultado
+
+```
+1 PASSED / 0 FAILED
+```
+
+---
+
+## Bug 6 — Argumento mutable por defecto (`inventario_inicial={}`)
+
+### Problema
+
+El constructor usaba `inventario_inicial={}`, causando que todas las instancias compartieran el mismo dict.
+
+### Solución
+
+```python
+def __init__(self, inventario_inicial=None):
+    self.inventario = {} if inventario_inicial is None else inventario_inicial
+```
+
+### Test
+
+`test/test_error1.py` — Verifica que dos instancias tengan inventarios independientes.
+
+### Resultado
+
+```
+1 PASSED / 0 FAILED
+```
+
+---
+
+## Resumen de ejecución
 
 ```bash
-# Bug 003
-python -m pytest test/test_bug_003.py -v
-
-# Bug 004
-python -m pytest test/test_bug_004.py -v
-
-# Todos los tests
 python -m pytest test/ -v
 ```
 
----
-
-## Resultados
-
 ```
-Bug 003: 4 PASSED / 0 FAILED
-Bug 004: 4 PASSED / 0 FAILED
+test/test_bug_001.py      PASSED
+test/test_error2.py       PASSED
+test/test_bug_003.py      4 PASSED
+test/test_bug_004.py      4 PASSED
+test/test_bug5.py         PASSED
+test/test_error1.py       PASSED
+===========================
+11 PASSED / 0 FAILED
 ```
-
----
-
-## Aislamiento
-
-Los tests utilizan datos independientes por cada ejecución (`TiendaOnline({})` con un diccionario nuevo) para evitar contaminación entre pruebas. Además, incluyen los ajustes mínimos necesarios para aislar los bugs de **otros bugs presentes en el código original** (como el mutable default en `__init__` y el typo `ventas_totaIes`), sin modificar el código de producción.
