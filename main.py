@@ -1,8 +1,9 @@
 class TiendaOnline:
     # Sistema básico de gestión de inventario y ventas
-    
-    def __init__(self, inventario_inicial={}):
-        self.inventario = inventario_inicial
+    # BUG 1: El inventario inicial se comparte entre diferentes instancias de TiendaOnline.
+    # Corrección: evitar utilizar un diccionario mutable como valor predeterminado.
+    def __init__(self, inventario_inicial=None):
+        self.inventario = {} if inventario_inicial is None else inventario_inicial
         self.ventas_totales = 0.0
 
     def agregar_producto(self, id_producto, nombre, precio, cantidad):
